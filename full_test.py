@@ -267,7 +267,6 @@ def test_rf(apt_dataset, malware_dataset, destination):
         clf = ThresholdRandomForest(percentage=0.05, n_estimators=150, random_state=1,
                                     n_jobs=cpu_count() - 1, class_name="apt")
         clf.fit(X_train, y_train)
-        clf.apply(X_test)
         end_train_time = time.time()
         end_train = end_train_time - start_time
         clf.set_percentage(0.05)
