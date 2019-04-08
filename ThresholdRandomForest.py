@@ -1,5 +1,8 @@
 import logging
 from collections import Counter
+from itertools import repeat
+from multiprocessing import cpu_count
+from multiprocessing.pool import Pool
 from time import time
 
 import numpy as np
@@ -38,7 +41,7 @@ class ThresholdRandomForest:
         result_df = pd.DataFrame(result).fillna(0)
         elapsed_time = time() - start_time
         self.logger.info("Confidence Dataframe generated: " + str(elapsed_time))
-        return result_df
+        self.confidence_dataframe = result_df
 
     def __sample_confidence_train(self, leaves, sample_leaves, current_class):
         '''Compute the confidence of a single sample from
@@ -75,19 +78,51 @@ class ThresholdRandomForest:
         self.logger.debug("Leave one out: " + str(elapsed_time))
         return confidence
 
+    def parallel_leave_one_out(self, index, X, y):
+        start_time = time()
+        current_row = X.ix[index]
+        current_class = y.ix[index]
+        X_train = X.drop(index)
+        y_train = y.drop(index)
+        # classifier = RandomForestClassifier(
+        #     n_estimators=self.n_estimators, criterion="gini", n_jobs=self.n_jobs, random_state=self.random_state)
+        classifier = RandomForestClassifier(
+            n_estimators=self.n_estimators, criterion="gini", n_jobs=1, random_state=self.random_state)
+        model = classifier.fit(X_train.drop(["md5"], axis=1, errors="ignore"), y_train)
+        leaves = pd.DataFrame(model.apply(X_train.drop(["md5"], axis=1, errors="ignore")))
+        leaves = leaves.assign(label=y)
+        sample_leaves = pd.DataFrame(model.apply(current_row.drop(
+            ["md5"], errors="ignore").values.reshape(1, -1))).values.tolist()[0]
+        confidence = self.__sample_confidence_train(leaves, sample_leaves, current_class)
+        elapsed_time = time() - start_time
+        self.logger.debug("Leave one out: " + str(elapsed_time))
+        return confidence
+
     def __get_class_confidence(self, X, y):
         '''Compute the average class confidence through
         leave one out methodology'''
+
         self.logger.info("Starting computation of confidences of classes")
         start_time = time()
         partial_time = time()
         self.logger.info("Starting leave one out phase")
         confidence_list = []
-        for i in range(0, X.shape[0]):
-            elem = self.__leave_one_out(i, X, y)
-            confidence_list.append(elem)
+        pools = Pool(cpu_count() - 3)
+        confidence_list = pools.starmap(self.parallel_leave_one_out, zip(range(0, X.shape[0]), repeat(X), repeat(y)))
         elapsed_time = time() - partial_time
         self.logger.info("End loo phase " + str(elapsed_time))
+
+        # self.logger.info("Starting computation of confidences of classes")
+        # start_time = time()
+        # partial_time = time()
+        # self.logger.info("Starting leave one out phase")
+        # confidence_list = []
+        # for i in range(0, X.shape[0]):
+        #     elem = self.__leave_one_out(i, X, y)
+        #     confidence_list.append(elem)
+        # elapsed_time = time() - partial_time
+        # self.logger.info("End loo phase " + str(elapsed_time))
+
         averages = [sum(suby) / len(suby) for suby in confidence_list]
         averages_df = pd.DataFrame(averages)
         averages_df = averages_df.assign(classes=y.values)
@@ -128,7 +163,8 @@ class ThresholdRandomForest:
         self.__generate_confidence_model(x, y)
 
     def apply(self, x):
-        return self.__compute_confidence_dataframe(x)
+        self.__compute_confidence_dataframe(x)
+        return self.confidence_dataframe
 
     def get_percentage(self):
         return self.percentage
@@ -137,7 +173,9 @@ class ThresholdRandomForest:
         self.percentage = percentage
 
     def predict(self, x):
-        result_prediction = self.__compute_confidence_dataframe(x)
+        if self.confidence_dataframe is None:
+            self.__compute_confidence_dataframe(x)
+        result_prediction = self.confidence_dataframe
         cols = list(result_prediction.columns.values)
         try:
             cols.remove("md5")
@@ -152,6 +190,9 @@ class ThresholdRandomForest:
         result["md5"] = x["md5"]
         return result
 
+    def empty_confidence_dataframe(self):
+        self.confidence_dataframe = None
+
     def __init__(self, n_estimators=100, percentage=0.05, random_state=1, n_jobs=1, debug=0,
                  class_name="current_class"):
         self.n_estimators = n_estimators
@@ -160,6 +201,7 @@ class ThresholdRandomForest:
         self.n_jobs = n_jobs
         self.logger = logging.getLogger(__name__)
         self.class_name = class_name
+        self.confidence_dataframe = None
         logging.basicConfig(format='%(asctime)s %(message)s')
         if debug == "1":
             self.logger.setLevel(logging.DEBUG)
