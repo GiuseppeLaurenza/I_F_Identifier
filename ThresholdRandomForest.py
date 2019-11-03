@@ -4,7 +4,8 @@ from itertools import repeat
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
 from time import time
-
+import os
+os.environ["NUMEXPR_MAX_THREADS"]="272"
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -62,8 +63,8 @@ class ThresholdRandomForest:
         '''Generate confidence through leave one out methodology'''
         self.logger.debug("Leave one out with element " + str(index))
         start_time = time()
-        current_row = X.ix[index]
-        current_class = y.ix[index]
+        current_row = X.iloc[index]
+        current_class = y.iloc[index]
         X_train = X.drop(index)
         y_train = y.drop(index)
         classifier = RandomForestClassifier(
@@ -80,8 +81,8 @@ class ThresholdRandomForest:
 
     def parallel_leave_one_out(self, index, X, y):
         start_time = time()
-        current_row = X.ix[index]
-        current_class = y.ix[index]
+        current_row = X.iloc[index]
+        current_class = y.iloc[index]
         X_train = X.drop(index)
         y_train = y.drop(index)
         # classifier = RandomForestClassifier(
