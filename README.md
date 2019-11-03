@@ -5,7 +5,7 @@ This repository contains scripts and dataset for a Apt Identification Triage Sys
 * Laurenza, Giuseppe, et al. *Malware triage for early identification of Advanced Persistent Threat activities.* arXiv preprint arXiv:1810.07321 (2018).
   * This work is implemented as *One Class* (oc)
 
-##File Details
+## File Details
 * *dataset.tar.gz* contains two hdf files containing features of APT-malware and normal malware
 * *test_article.py* contains the code to test each implementation and compute some metrics
 * *Checking_Result.py* contains the code to compute metrics on the test
