@@ -7,7 +7,7 @@ This repository contains scripts and dataset for a Apt Identification Triage Sys
 
 ## File Details
 * *dataset.tar.gz* contains two hdf files containing features of APT-malware and normal malware
-* *test_article.py* contains the code to test each implementation and compute some metrics
-* *Checking_Result.py* contains the code to compute metrics on the test
-* *ThresholdRandomForest.py* contains all the methods to implement the functionalities of the first work
+* *test_article.py* contains the code to test each implementation, included computation of some metrics
+* *Checking_Result.py* contains the code to help computing quality and time metrics
+* *ThresholdRandomForest.py* is a separate file containing all the methods to implement the functionalities of the first work
 * _select*_ contain data obtained from our tests about best classes, best parameters and best columns to reproduce the published results
